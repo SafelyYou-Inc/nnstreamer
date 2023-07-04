@@ -14,11 +14,11 @@
 #include <config.h>
 #endif
 
-#include "nnstreamer_util.h"
-#include "tensor_query_client.h"
 #include <gio/gio.h>
 #include <glib.h>
 #include <string.h>
+#include "nnstreamer_util.h"
+#include "tensor_query_client.h"
 #include "tensor_query_common.h"
 
 #include <stdio.h>
@@ -35,8 +35,7 @@
 /**
  * @brief Properties.
  */
-enum
-{
+enum {
   PROP_0,
   PROP_HOST,
   PROP_PORT,
@@ -48,11 +47,11 @@ enum
   PROP_SILENT,
 };
 
-#define TCP_HIGHEST_PORT        65535
-#define TCP_DEFAULT_HOST        "localhost"
+#define TCP_HIGHEST_PORT 65535
+#define TCP_DEFAULT_HOST "localhost"
 #define TCP_DEFAULT_SRV_SRC_PORT 3000
 #define TCP_DEFAULT_CLIENT_SRC_PORT 3001
-#define DEFAULT_CLIENT_TIMEOUT  0
+#define DEFAULT_CLIENT_TIMEOUT 0
 #define DEFAULT_SILENT TRUE
 
 GST_DEBUG_CATEGORY_STATIC (gst_tensor_query_client_debug);
@@ -61,42 +60,38 @@ GST_DEBUG_CATEGORY_STATIC (gst_tensor_query_client_debug);
 /**
  * @brief the capabilities of the inputs.
  */
-static GstStaticPadTemplate sinktemplate = GST_STATIC_PAD_TEMPLATE ("sink",
-    GST_PAD_SINK,
-    GST_PAD_ALWAYS,
-    GST_STATIC_CAPS_ANY);
+static GstStaticPadTemplate sinktemplate = GST_STATIC_PAD_TEMPLATE (
+    "sink", GST_PAD_SINK, GST_PAD_ALWAYS, GST_STATIC_CAPS_ANY);
 
 /**
  * @brief the capabilities of the outputs.
  */
-static GstStaticPadTemplate srctemplate = GST_STATIC_PAD_TEMPLATE ("src",
-    GST_PAD_SRC,
-    GST_PAD_ALWAYS,
-    GST_STATIC_CAPS_ANY);
+static GstStaticPadTemplate srctemplate = GST_STATIC_PAD_TEMPLATE (
+    "src", GST_PAD_SRC, GST_PAD_ALWAYS, GST_STATIC_CAPS_ANY);
 
 #define gst_tensor_query_client_parent_class parent_class
 G_DEFINE_TYPE (GstTensorQueryClient, gst_tensor_query_client, GST_TYPE_ELEMENT);
 
-static void gst_tensor_query_client_finalize (GObject * object);
-static void gst_tensor_query_client_set_property (GObject * object,
-    guint prop_id, const GValue * value, GParamSpec * pspec);
-static void gst_tensor_query_client_get_property (GObject * object,
-    guint prop_id, GValue * value, GParamSpec * pspec);
+static void gst_tensor_query_client_finalize (GObject *object);
+static void gst_tensor_query_client_set_property (
+    GObject *object, guint prop_id, const GValue *value, GParamSpec *pspec);
+static void gst_tensor_query_client_get_property (
+    GObject *object, guint prop_id, GValue *value, GParamSpec *pspec);
 
-static gboolean gst_tensor_query_client_sink_event (GstPad * pad,
-    GstObject * parent, GstEvent * event);
-static gboolean gst_tensor_query_client_sink_query (GstPad * pad,
-    GstObject * parent, GstQuery * query);
-static GstFlowReturn gst_tensor_query_client_chain (GstPad * pad,
-    GstObject * parent, GstBuffer * buf);
-static GstCaps *gst_tensor_query_client_query_caps (GstTensorQueryClient * self,
-    GstPad * pad, GstCaps * filter);
+static gboolean gst_tensor_query_client_sink_event (
+    GstPad *pad, GstObject *parent, GstEvent *event);
+static gboolean gst_tensor_query_client_sink_query (
+    GstPad *pad, GstObject *parent, GstQuery *query);
+static GstFlowReturn gst_tensor_query_client_chain (
+    GstPad *pad, GstObject *parent, GstBuffer *buf);
+static GstCaps *gst_tensor_query_client_query_caps (
+    GstTensorQueryClient *self, GstPad *pad, GstCaps *filter);
 
 /**
  * @brief initialize the class
  */
 static void
-gst_tensor_query_client_class_init (GstTensorQueryClientClass * klass)
+gst_tensor_query_client_class_init (GstTensorQueryClientClass *klass)
 {
   GObjectClass *gobject_class;
   GstElementClass *gstelement_class;
@@ -110,50 +105,42 @@ gst_tensor_query_client_class_init (GstTensorQueryClientClass * klass)
 
   /** install property goes here */
   g_object_class_install_property (gobject_class, PROP_HOST,
-      g_param_spec_string ("host", "Host",
-          "A host address to receive the packets from query server",
+      g_param_spec_string ("host", "Host", "A host address to receive the packets from query server",
           TCP_DEFAULT_HOST, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
   g_object_class_install_property (gobject_class, PROP_PORT,
       g_param_spec_uint ("port", "Port",
-          "A port number to receive the packets from query server", 0,
-          TCP_HIGHEST_PORT, TCP_DEFAULT_SRV_SRC_PORT,
-          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+          "A port number to receive the packets from query server", 0, TCP_HIGHEST_PORT,
+          TCP_DEFAULT_SRV_SRC_PORT, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
   g_object_class_install_property (gobject_class, PROP_DEST_HOST,
-      g_param_spec_string ("dest-host", "Destination Host",
-          "A tenor query server host to send the packets",
+      g_param_spec_string ("dest-host", "Destination Host", "A tenor query server host to send the packets",
           TCP_DEFAULT_HOST, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
   g_object_class_install_property (gobject_class, PROP_DEST_PORT,
       g_param_spec_uint ("dest-port", "Destination Port",
-          "The port of tensor query server to send the packets", 0,
-          TCP_HIGHEST_PORT, TCP_DEFAULT_CLIENT_SRC_PORT,
-          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+          "The port of tensor query server to send the packets", 0, TCP_HIGHEST_PORT,
+          TCP_DEFAULT_CLIENT_SRC_PORT, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
   g_object_class_install_property (gobject_class, PROP_SILENT,
       g_param_spec_boolean ("silent", "Silent", "Produce verbose output",
           DEFAULT_SILENT, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
   g_object_class_install_property (gobject_class, PROP_CONNECT_TYPE,
       g_param_spec_enum ("connect-type", "Connect Type",
-          "The connections type between client and server.",
-          GST_TYPE_QUERY_CONNECT_TYPE, DEFAULT_CONNECT_TYPE,
-          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+          "The connections type between client and server.", GST_TYPE_QUERY_CONNECT_TYPE,
+          DEFAULT_CONNECT_TYPE, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
   g_object_class_install_property (gobject_class, PROP_TOPIC,
-      g_param_spec_string ("topic", "Topic",
-          "The main topic of the host.",
-          "", G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+      g_param_spec_string ("topic", "Topic", "The main topic of the host.", "",
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (gobject_class, PROP_TIMEOUT,
       g_param_spec_uint ("timeout", "timeout value",
           "A timeout value (in ms) to wait message from query server after sending buffer to server. 0 means no wait.",
-          0, G_MAXUINT, DEFAULT_CLIENT_TIMEOUT,
-          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+          0, G_MAXUINT, DEFAULT_CLIENT_TIMEOUT, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&sinktemplate));
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&srctemplate));
+  gst_element_class_add_pad_template (
+      gstelement_class, gst_static_pad_template_get (&sinktemplate));
+  gst_element_class_add_pad_template (
+      gstelement_class, gst_static_pad_template_get (&srctemplate));
 
-  gst_element_class_set_static_metadata (gstelement_class,
-      "TensorQueryClient", "Filter/Tensor/Query",
-      "Handle querying tensor data through the network",
+  gst_element_class_set_static_metadata (gstelement_class, "TensorQueryClient",
+      "Filter/Tensor/Query", "Handle querying tensor data through the network",
       "Samsung Electronics Co., Ltd.");
 
   GST_DEBUG_CATEGORY_INIT (gst_tensor_query_client_debug, "tensor_query_client",
@@ -164,17 +151,17 @@ gst_tensor_query_client_class_init (GstTensorQueryClientClass * klass)
  * @brief initialize the new element
  */
 static void
-gst_tensor_query_client_init (GstTensorQueryClient * self)
+gst_tensor_query_client_init (GstTensorQueryClient *self)
 {
   /** setup sink pad */
   self->sinkpad = gst_pad_new_from_static_template (&sinktemplate, "sink");
   gst_element_add_pad (GST_ELEMENT (self), self->sinkpad);
-  gst_pad_set_event_function (self->sinkpad,
-      GST_DEBUG_FUNCPTR (gst_tensor_query_client_sink_event));
-  gst_pad_set_query_function (self->sinkpad,
-      GST_DEBUG_FUNCPTR (gst_tensor_query_client_sink_query));
-  gst_pad_set_chain_function (self->sinkpad,
-      GST_DEBUG_FUNCPTR (gst_tensor_query_client_chain));
+  gst_pad_set_event_function (
+      self->sinkpad, GST_DEBUG_FUNCPTR (gst_tensor_query_client_sink_event));
+  gst_pad_set_query_function (
+      self->sinkpad, GST_DEBUG_FUNCPTR (gst_tensor_query_client_sink_query));
+  gst_pad_set_chain_function (
+      self->sinkpad, GST_DEBUG_FUNCPTR (gst_tensor_query_client_chain));
 
   /** setup src pad */
   self->srcpad = gst_pad_new_from_static_template (&srctemplate, "src");
@@ -198,7 +185,7 @@ gst_tensor_query_client_init (GstTensorQueryClient * self)
  * @brief finalize the object
  */
 static void
-gst_tensor_query_client_finalize (GObject * object)
+gst_tensor_query_client_finalize (GObject *object)
 {
   GstTensorQueryClient *self = GST_TENSOR_QUERY_CLIENT (object);
   nns_edge_data_h data_h;
@@ -233,8 +220,8 @@ gst_tensor_query_client_finalize (GObject * object)
  * @brief set property
  */
 static void
-gst_tensor_query_client_set_property (GObject * object, guint prop_id,
-    const GValue * value, GParamSpec * pspec)
+gst_tensor_query_client_set_property (
+    GObject *object, guint prop_id, const GValue *value, GParamSpec *pspec)
 {
   GstTensorQueryClient *self = GST_TENSOR_QUERY_CLIENT (object);
 
@@ -289,8 +276,8 @@ gst_tensor_query_client_set_property (GObject * object, guint prop_id,
  * @brief get property
  */
 static void
-gst_tensor_query_client_get_property (GObject * object, guint prop_id,
-    GValue * value, GParamSpec * pspec)
+gst_tensor_query_client_get_property (
+    GObject *object, guint prop_id, GValue *value, GParamSpec *pspec)
 {
   GstTensorQueryClient *self = GST_TENSOR_QUERY_CLIENT (object);
 
@@ -329,8 +316,7 @@ gst_tensor_query_client_get_property (GObject * object, guint prop_id,
  * @brief Update src pad caps from tensors config.
  */
 static gboolean
-gst_tensor_query_client_update_caps (GstTensorQueryClient * self,
-    const gchar * caps_str)
+gst_tensor_query_client_update_caps (GstTensorQueryClient *self, const gchar *caps_str)
 {
   GstCaps *curr_caps, *out_caps;
   gboolean ret = FALSE;
@@ -344,7 +330,8 @@ gst_tensor_query_client_update_caps (GstTensorQueryClient * self,
       ret = gst_pad_set_caps (self->srcpad, out_caps);
     } else {
       nns_loge ("out-caps from tensor_query_serversink is not fixed. "
-          "Failed to update client src caps, out-caps: %s", caps_str);
+                "Failed to update client src caps, out-caps: %s",
+          caps_str);
     }
   } else {
     /** Don't need to update when the capability is the same. */
@@ -363,15 +350,15 @@ gst_tensor_query_client_update_caps (GstTensorQueryClient * self,
  * @brief Retry to connect to available server.
  */
 static gboolean
-_client_retry_connection (GstTensorQueryClient * self)
+_client_retry_connection (GstTensorQueryClient *self)
 {
   if (NNS_EDGE_ERROR_NONE != nns_edge_disconnect (self->edge_h)) {
     nns_loge ("Failed to retry connection, disconnection failure");
     return FALSE;
   }
 
-  if (NNS_EDGE_ERROR_NONE != nns_edge_connect (self->edge_h,
-          self->dest_host, self->dest_port)) {
+  if (NNS_EDGE_ERROR_NONE
+      != nns_edge_connect (self->edge_h, self->dest_host, self->dest_port)) {
     nns_loge ("Failed to retry connection, connection failure");
     return FALSE;
   }
@@ -383,7 +370,7 @@ _client_retry_connection (GstTensorQueryClient * self)
  * @brief Parse caps from received event data.
  */
 static gchar *
-_nns_edge_parse_caps (gchar * caps_str, gboolean is_src)
+_nns_edge_parse_caps (gchar *caps_str, gboolean is_src)
 {
   gchar **strv;
   gint num, i;
@@ -396,10 +383,8 @@ _nns_edge_parse_caps (gchar * caps_str, gboolean is_src)
   strv = g_strsplit (caps_str, "@", -1);
   num = g_strv_length (strv);
 
-  find_key =
-      is_src ==
-      TRUE ? g_strdup ("query_server_src_caps") :
-      g_strdup ("query_server_sink_caps");
+  find_key = is_src == TRUE ? g_strdup ("query_server_src_caps") :
+                              g_strdup ("query_server_sink_caps");
 
   for (i = 1; i < num; i += 2) {
     if (0 == g_strcmp0 (find_key, strv[i])) {
@@ -431,65 +416,63 @@ _nns_edge_event_cb (nns_edge_event_h event_h, void *user_data)
 
   switch (event_type) {
     case NNS_EDGE_EVENT_CAPABILITY:
-    {
-      GstCaps *server_caps, *client_caps;
-      GstStructure *server_st, *client_st;
-      gboolean result = FALSE;
-      gchar *ret_str, *caps_str;
+      {
+        GstCaps *server_caps, *client_caps;
+        GstStructure *server_st, *client_st;
+        gboolean result = FALSE;
+        gchar *ret_str, *caps_str;
 
-      nns_edge_event_parse_capability (event_h, &caps_str);
-      ret_str = _nns_edge_parse_caps (caps_str, TRUE);
-      nns_logd ("Received server-src caps: %s", GST_STR_NULL (ret_str));
-      client_caps = gst_caps_from_string ((gchar *) self->in_caps_str);
-      server_caps = gst_caps_from_string (ret_str);
-      g_free (ret_str);
+        nns_edge_event_parse_capability (event_h, &caps_str);
+        ret_str = _nns_edge_parse_caps (caps_str, TRUE);
+        nns_logd ("Received server-src caps: %s", GST_STR_NULL (ret_str));
+        client_caps = gst_caps_from_string ((gchar *) self->in_caps_str);
+        server_caps = gst_caps_from_string (ret_str);
+        g_free (ret_str);
 
-      /** Server framerate may vary. Let's skip comparing the framerate. */
-      gst_caps_set_simple (server_caps, "framerate", GST_TYPE_FRACTION, 0, 1,
-          NULL);
-      gst_caps_set_simple (client_caps, "framerate", GST_TYPE_FRACTION, 0, 1,
-          NULL);
+        /** Server framerate may vary. Let's skip comparing the framerate. */
+        gst_caps_set_simple (server_caps, "framerate", GST_TYPE_FRACTION, 0, 1, NULL);
+        gst_caps_set_simple (client_caps, "framerate", GST_TYPE_FRACTION, 0, 1, NULL);
 
-      server_st = gst_caps_get_structure (server_caps, 0);
-      client_st = gst_caps_get_structure (client_caps, 0);
+        server_st = gst_caps_get_structure (server_caps, 0);
+        client_st = gst_caps_get_structure (client_caps, 0);
 
-      if (gst_structure_is_tensor_stream (server_st)) {
-        GstTensorsConfig server_config, client_config;
+        if (gst_structure_is_tensor_stream (server_st)) {
+          GstTensorsConfig server_config, client_config;
 
-        gst_tensors_config_from_structure (&server_config, server_st);
-        gst_tensors_config_from_structure (&client_config, client_st);
+          gst_tensors_config_from_structure (&server_config, server_st);
+          gst_tensors_config_from_structure (&client_config, client_st);
 
-        result = gst_tensors_config_is_equal (&server_config, &client_config);
-      }
+          result = gst_tensors_config_is_equal (&server_config, &client_config);
+        }
 
-      if (result || gst_caps_can_intersect (client_caps, server_caps)) {
-        /** Update client src caps */
-        ret_str = _nns_edge_parse_caps (caps_str, FALSE);
-        nns_logd ("Received server-sink caps: %s", GST_STR_NULL (ret_str));
-        if (!gst_tensor_query_client_update_caps (self, ret_str)) {
-          nns_loge ("Failed to update client source caps.");
+        if (result || gst_caps_can_intersect (client_caps, server_caps)) {
+          /** Update client src caps */
+          ret_str = _nns_edge_parse_caps (caps_str, FALSE);
+          nns_logd ("Received server-sink caps: %s", GST_STR_NULL (ret_str));
+          if (!gst_tensor_query_client_update_caps (self, ret_str)) {
+            nns_loge ("Failed to update client source caps.");
+            ret = NNS_EDGE_ERROR_UNKNOWN;
+          }
+          g_free (ret_str);
+        } else {
+          /* respond deny with src caps string */
+          nns_loge ("Query caps is not acceptable!");
           ret = NNS_EDGE_ERROR_UNKNOWN;
         }
-        g_free (ret_str);
-      } else {
-        /* respond deny with src caps string */
-        nns_loge ("Query caps is not acceptable!");
-        ret = NNS_EDGE_ERROR_UNKNOWN;
+
+        gst_caps_unref (server_caps);
+        gst_caps_unref (client_caps);
+        g_free (caps_str);
+        break;
       }
-
-      gst_caps_unref (server_caps);
-      gst_caps_unref (client_caps);
-      g_free (caps_str);
-      break;
-    }
     case NNS_EDGE_EVENT_NEW_DATA_RECEIVED:
-    {
-      nns_edge_data_h data;
+      {
+        nns_edge_data_h data;
 
-      nns_edge_event_parse_new_data (event_h, &data);
-      g_async_queue_push (self->msg_queue, data);
-      break;
-    }
+        nns_edge_event_parse_new_data (event_h, &data);
+        g_async_queue_push (self->msg_queue, data);
+        break;
+      }
     default:
       break;
   }
@@ -501,7 +484,7 @@ _nns_edge_event_cb (nns_edge_event_h event_h, void *user_data)
  * @brief Internal function to create edge handle.
  */
 static gboolean
-gst_tensor_query_client_create_edge_handle (GstTensorQueryClient * self)
+gst_tensor_query_client_create_edge_handle (GstTensorQueryClient *self)
 {
   gboolean started = FALSE;
   gchar *prev_caps = NULL;
@@ -511,8 +494,8 @@ gst_tensor_query_client_create_edge_handle (GstTensorQueryClient * self)
   if (self->edge_h) {
     ret = nns_edge_get_info (self->edge_h, "CAPS", &prev_caps);
 
-    if (ret != NNS_EDGE_ERROR_NONE || !prev_caps ||
-        !g_str_equal (prev_caps, self->in_caps_str)) {
+    if (ret != NNS_EDGE_ERROR_NONE || !prev_caps
+        || !g_str_equal (prev_caps, self->in_caps_str)) {
       /* Capability is changed, close old handle. */
       nns_edge_release_handle (self->edge_h);
       self->edge_h = NULL;
@@ -541,8 +524,7 @@ gst_tensor_query_client_create_edge_handle (GstTensorQueryClient * self)
 
   ret = nns_edge_start (self->edge_h);
   if (ret != NNS_EDGE_ERROR_NONE) {
-    nns_loge
-        ("Failed to start NNStreamer-edge. Please check server IP and port.");
+    nns_loge ("Failed to start NNStreamer-edge. Please check server IP and port.");
     goto done;
   }
 
@@ -567,8 +549,7 @@ done:
  * @brief This function handles sink event.
  */
 static gboolean
-gst_tensor_query_client_sink_event (GstPad * pad,
-    GstObject * parent, GstEvent * event)
+gst_tensor_query_client_sink_event (GstPad *pad, GstObject *parent, GstEvent *event)
 {
   GstTensorQueryClient *self = GST_TENSOR_QUERY_CLIENT (parent);
 
@@ -577,21 +558,21 @@ gst_tensor_query_client_sink_event (GstPad * pad,
 
   switch (GST_EVENT_TYPE (event)) {
     case GST_EVENT_CAPS:
-    {
-      GstCaps *caps;
-      gboolean ret;
+      {
+        GstCaps *caps;
+        gboolean ret;
 
-      gst_event_parse_caps (event, &caps);
-      g_free (self->in_caps_str);
-      self->in_caps_str = gst_caps_to_string (caps);
+        gst_event_parse_caps (event, &caps);
+        g_free (self->in_caps_str);
+        self->in_caps_str = gst_caps_to_string (caps);
 
-      ret = gst_tensor_query_client_create_edge_handle (self);
-      if (!ret)
-        nns_loge ("Failed to create edge handle, cannot start query client.");
+        ret = gst_tensor_query_client_create_edge_handle (self);
+        if (!ret)
+          nns_loge ("Failed to create edge handle, cannot start query client.");
 
-      gst_event_unref (event);
-      return ret;
-    }
+        gst_event_unref (event);
+        return ret;
+      }
     default:
       break;
   }
@@ -603,8 +584,7 @@ gst_tensor_query_client_sink_event (GstPad * pad,
  * @brief This function handles sink pad query.
  */
 static gboolean
-gst_tensor_query_client_sink_query (GstPad * pad,
-    GstObject * parent, GstQuery * query)
+gst_tensor_query_client_sink_query (GstPad *pad, GstObject *parent, GstQuery *query)
 {
   GstTensorQueryClient *self = GST_TENSOR_QUERY_CLIENT (parent);
 
@@ -613,36 +593,36 @@ gst_tensor_query_client_sink_query (GstPad * pad,
 
   switch (GST_QUERY_TYPE (query)) {
     case GST_QUERY_CAPS:
-    {
-      GstCaps *caps;
-      GstCaps *filter;
+      {
+        GstCaps *caps;
+        GstCaps *filter;
 
-      gst_query_parse_caps (query, &filter);
-      caps = gst_tensor_query_client_query_caps (self, pad, filter);
+        gst_query_parse_caps (query, &filter);
+        caps = gst_tensor_query_client_query_caps (self, pad, filter);
 
-      gst_query_set_caps_result (query, caps);
-      gst_caps_unref (caps);
-      return TRUE;
-    }
-    case GST_QUERY_ACCEPT_CAPS:
-    {
-      GstCaps *caps;
-      GstCaps *template_caps;
-      gboolean res = FALSE;
-
-      gst_query_parse_accept_caps (query, &caps);
-      silent_debug_caps (self, caps, "accept-caps");
-
-      if (gst_caps_is_fixed (caps)) {
-        template_caps = gst_pad_get_pad_template_caps (pad);
-
-        res = gst_caps_can_intersect (template_caps, caps);
-        gst_caps_unref (template_caps);
+        gst_query_set_caps_result (query, caps);
+        gst_caps_unref (caps);
+        return TRUE;
       }
+    case GST_QUERY_ACCEPT_CAPS:
+      {
+        GstCaps *caps;
+        GstCaps *template_caps;
+        gboolean res = FALSE;
 
-      gst_query_set_accept_caps_result (query, res);
-      return TRUE;
-    }
+        gst_query_parse_accept_caps (query, &caps);
+        silent_debug_caps (self, caps, "accept-caps");
+
+        if (gst_caps_is_fixed (caps)) {
+          template_caps = gst_pad_get_pad_template_caps (pad);
+
+          res = gst_caps_can_intersect (template_caps, caps);
+          gst_caps_unref (template_caps);
+        }
+
+        gst_query_set_accept_caps_result (query, res);
+        return TRUE;
+      }
     default:
       break;
   }
@@ -654,8 +634,7 @@ gst_tensor_query_client_sink_query (GstPad * pad,
  * @brief Chain function, this function does the actual processing.
  */
 static GstFlowReturn
-gst_tensor_query_client_chain (GstPad * pad,
-    GstObject * parent, GstBuffer * buf)
+gst_tensor_query_client_chain (GstPad *pad, GstObject *parent, GstBuffer *buf)
 {
   GstTensorQueryClient *self = GST_TENSOR_QUERY_CLIENT (parent);
   GstBuffer *out_buf = NULL;
@@ -696,8 +675,7 @@ gst_tensor_query_client_chain (GstPad * pad,
 
   nns_edge_data_destroy (data_h);
 
-  data_h = g_async_queue_timeout_pop (self->msg_queue,
-      self->timeout * G_TIME_SPAN_MILLISECOND);
+  data_h = g_async_queue_timeout_pop (self->msg_queue, self->timeout * G_TIME_SPAN_MILLISECOND);
   if (data_h) {
     ret = nns_edge_data_get_count (data_h, &num_data);
     if (ret != NNS_EDGE_ERROR_NONE || num_data == 0) {
@@ -715,8 +693,7 @@ gst_tensor_query_client_chain (GstPad * pad,
       nns_edge_data_get (data_h, i, &data, &data_len);
       new_data = _g_memdup (data, data_len);
       gst_buffer_append_memory (out_buf,
-          gst_memory_new_wrapped (0, new_data, data_len, 0,
-              data_len, new_data, g_free));
+          gst_memory_new_wrapped (0, new_data, data_len, 0, data_len, new_data, g_free));
     }
     /* metadata from incoming buffer */
     gst_buffer_copy_into (out_buf, buf, GST_BUFFER_COPY_METADATA, 0, -1);
@@ -728,7 +705,7 @@ gst_tensor_query_client_chain (GstPad * pad,
 retry:
   if (!self->topic || !_client_retry_connection (self)) {
     nns_loge ("Failed to retry connection");
-    res = GST_FLOW_ERROR;
+    // res = GST_FLOW_ERROR;
   }
 done:
   if (data_h) {
@@ -746,8 +723,7 @@ done:
  * @brief Get pad caps for caps negotiation.
  */
 static GstCaps *
-gst_tensor_query_client_query_caps (GstTensorQueryClient * self, GstPad * pad,
-    GstCaps * filter)
+gst_tensor_query_client_query_caps (GstTensorQueryClient *self, GstPad *pad, GstCaps *filter)
 {
   GstCaps *caps;
 
@@ -762,8 +738,7 @@ gst_tensor_query_client_query_caps (GstTensorQueryClient * self, GstPad * pad,
 
   if (filter) {
     GstCaps *intersection;
-    intersection =
-        gst_caps_intersect_full (filter, caps, GST_CAPS_INTERSECT_FIRST);
+    intersection = gst_caps_intersect_full (filter, caps, GST_CAPS_INTERSECT_FIRST);
 
     gst_caps_unref (caps);
     caps = intersection;
